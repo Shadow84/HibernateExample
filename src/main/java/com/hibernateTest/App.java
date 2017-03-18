@@ -1,10 +1,12 @@
 package com.hibernateTest;
 
+import com.hibernateTest.stock.Category;
+import com.hibernateTest.stock.Stock;
 import com.hibernateTest.stock.StockCategory;
 import com.hibernateTest.util.HibernateUtil;
 import org.hibernate.classic.Session;
 
-import java.util.List;
+import java.util.*;
 
 public class App {
 
@@ -13,14 +15,25 @@ public class App {
 
         session.beginTransaction();
 
-        String hql = "from StockCategory";
+        //Iterate map from result
+       /* Map<Stock, List<StockCategory>> map = getStockCategories(session);
+        for (Map.Entry<Stock, List<StockCategory>> stockListEntry : map.entrySet()) {
+            System.out.println("Stock:" + stockListEntry.getKey());
+            for (StockCategory stockCategory : stockListEntry.getValue()) {
+                System.out.print("StockCategory: " + stockCategory.getCreatedBy() + " ");
+            }
+            System.out.println();
+        }*/
 
-        List<StockCategory> list = session.createQuery(hql).list();
-
-        for (StockCategory stockCategory : list) {
-            System.out.println(stockCategory.getPk() + " " + stockCategory.getCategory().getCategoryId() + " " + stockCategory.getStock().getStockId());
+        //Join fetch
+        List<Stock> allStocks = getAllStocks(session);
+        for (Stock stock : allStocks) {
+            System.out.println("Stock:" + stock);
+            for (StockCategory stockCategory : stock.getStockCategories()) {
+                System.out.print("StockCategory: " + stockCategory.getCreatedBy() + " ");
+            }
+            System.out.println();
         }
-
 
         session.getTransaction().commit();
 
@@ -35,7 +48,37 @@ public class App {
     }
 
 
-    /*public static void main(String[] args) {
+    private static Map<Stock, List<StockCategory>> getStockCategories(Session session) {
+        final String HQL = "from StockCategory";
+//        final String HQL = "SELECT DISTINCT s FROM StockCategory s JOIN FETCH s.pk.stock JOIN FETCH s.pk.category";
+
+
+        HashMap<Stock, List<StockCategory>> stockListHashMap = new HashMap<Stock, List<StockCategory>>();
+        List<StockCategory> list = (List<StockCategory>) session.createQuery(HQL).list();
+
+
+        for (StockCategory stockCategory : list) {
+            Stock stock = stockCategory.getStock();
+            List<StockCategory> stockCategories = stockListHashMap.get(stock);
+            if (stockCategories != null) {
+                stockCategories.add(stockCategory);
+            } else {
+                stockCategories = new ArrayList<StockCategory>();
+                stockCategories.add(stockCategory);
+                stockListHashMap.put(stock, stockCategories);
+            }
+        }
+
+        return stockListHashMap;
+    }
+
+    private static List<Stock> getAllStocks(Session session) {
+//      final String HQL = "FROM Stock ";
+        final String HQL = "SELECT DISTINCT s FROM Stock s join fetch s.stockCategories";
+        return (List<Stock>) session.createQuery(HQL).list();
+    }
+
+    public static void main2(String[] args) {
         System.out.println("Hibernate many to many - join table + extra column (Annotation)");
 		Session session = HibernateUtil.getSessionFactory().openSession();
 
@@ -94,5 +137,5 @@ public class App {
 
 		session.getTransaction().commit();
 		System.out.println("Done");
-	}*/
+	}
 }
